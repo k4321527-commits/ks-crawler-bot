@@ -1,0 +1,39 @@
+name: Daily Notice Crawler
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 한국시간: 02, 06, 10, 14, 18, 22시
+    - cron: '0 1,5,9,13,17,21 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notice-crawler
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: 의존성 설치
+        run: |
+          python -m pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: 공고 수집
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+          SMES_API_TOKEN: ${{ secrets.SMES_API_TOKEN }}
+          NOTICE_ATOMIC: '1'
+        run: python -u scraper.py
